@@ -6,10 +6,10 @@ original fp32 checkpoint.
 
 ```
 OSTrack_ep0300.pth.tar
-      │  convert_pth_to_ptgraph.py  (model surgery + torch.export + AxMO calibrate)
+      │  quantize_and_compile.py  (model surgery + torch.export + AxMO calibrate)
       ▼
 model.ptgraph                        ← int8-quantized backbone (what the .axm computes)
-      │  convert_pth_to_ptgraph.py --compile  (axelera-graph-compiler + axkernelcc)
+      │  quantize_and_compile.py --compile  (axelera-graph-compiler + axkernelcc)
       ▼
 model.axm                            ← Metis device artifact (backbone; head runs on host)
 ```
@@ -18,7 +18,7 @@ model.axm                            ← Metis device artifact (backbone; head r
 
 | Script | What it does |
 | --- | --- |
-| `convert_pth_to_ptgraph.py` | `.pth` → quantized `.ptgraph` (+ optional `--compile` → `.axm`). Applies the compile-enabling model surgery, `torch.export`, and AxMO post-training quantization. |
+| `quantize_and_compile.py` | `.pth` → quantized `.ptgraph` (+ optional `--compile` → `.axm`). Applies the compile-enabling model surgery, `torch.export`, and AxMO post-training quantization. |
 | `calibration.py` | `OSTrackCalibSet` — the calibration data fed to the quantizer (template from frame 0 + N search crops). |
 | `run_pth.py` | Run the fp32 `.pth` checkpoint as a tracker on a video. |
 | `run_ptgraph.py` | Run the quantized `.ptgraph` (the exact graph in the `.axm`) as a tracker on CPU. |
@@ -43,7 +43,7 @@ export OSTRACK_ROOT=/path/to/ostrack_metis   # dir containing lib/ and experimen
 Convert a checkpoint to a quantized `.ptgraph` (and optionally a device `.axm`):
 
 ```bash
-python convert_pth_to_ptgraph.py \
+python quantize_and_compile.py \
     --config vitb_256_mae_32x4_ep300 \
     --ckpt   output/checkpoints/train/ostrack/vitb_256_mae_32x4_ep300/OSTrack_ep0300.pth.tar \
     --video  /path/to/calibration.mp4 \
@@ -73,7 +73,7 @@ python compare_pth_ptgraph.py --ckpt CKPT --ptgraph build/ostrack_ptgraph/model.
 - **head_on_host:** the compiled backbone outputs a `(1,768,16,16)` feature map; the
   center-head convolutions + sigmoid + argmax decode run on the host in fp32. All the
   `run_*`/`compare` scripts follow this split.
-- **Model surgery** in `convert_pth_to_ptgraph.py` (SDPA rewrite, all-zeros attention
+- **Model surgery** in `quantize_and_compile.py` (SDPA rewrite, all-zeros attention
   mask, unshared patch-embed, ReLU→clamp, zero-bias) is required only to let the model
   quantize/legalize/compile; each step is numerically a no-op (fp32 output matches the
   original checkpoint / an ONNX export to ~1e-6).

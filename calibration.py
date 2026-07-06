@@ -3,7 +3,7 @@
 Yields (template, search) pairs the same way the model is driven at inference:
 a single fixed template cropped from frame 0, plus N search crops sampled across
 the clip at the init-bbox location. This is the exact activation distribution the
-AxMO calibrator observes in convert_pth_to_ptgraph.py.
+AxMO calibrator observes in quantize_and_compile.py.
 
 NOTE: this crops every search region at the *fixed* init bbox (not a real tracking
 loop). It is deliberately simple -- enough activation diversity for PTQ range
